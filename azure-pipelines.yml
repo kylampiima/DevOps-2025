@@ -1,4 +1,31 @@
-# Starter pipeline
+# Starter pipeline for building and testing a Maven project
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# Step 1: Format code before building
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'io.spring.javaformat:spring-javaformat-maven-plugin:0.0.27:apply'
+    options: '-DskipTests'  # Skip tests during formatting
+
+# Step 2: Set up Maven and run tests
+
+
+# Step 3: Publish test results
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    testRunTitle: 'Tests for Petclinic'
+
+# Optional: Add additional steps for deployment or other tasks
+- script: echo "Add other tasks to build, test, and deploy your project."
+  displayName: 'Run a multi-line script'
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
@@ -10,26 +37,3 @@
     effectivePomSkip: false
     sonarQubeRunAnalysis: true
     sqMavenPluginVersionChoice: 'latest'
-- task: PublishTestResults@2
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/TEST-*.xml'
-    testRunTitle: 'tests for petclinic'
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
-trigger:
-- main
-
-pool:
-  vmImage: ubuntu-latest
-
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
