@@ -1,35 +1,31 @@
-# Starter pipeline
-- task: Maven@4
-  inputs:
-    mavenPomFile: 'pom.xml'
-    publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    javaHomeOption: 'JDKVersion'
-    mavenVersionOption: 'Default'
-    mavenAuthenticateFeed: false
-    effectivePomSkip: false
-    sonarQubeRunAnalysis: true
-    sqMavenPluginVersionChoice: 'latest'
-- task: PublishTestResults@2
-  inputs:
-    testResultsFormat: 'JUnit'
-    testResultsFiles: '**/TEST-*.xml'
-    testRunTitle: 'tests for petclinic'
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
+# Starter pipeline for building and testing a Maven project
 trigger:
 - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+# Step 1: Set up Maven and run tests
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'  # Path to the Maven POM file
+    publishJUnitResults: true  # Publish JUnit test results
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'  # Path to test results
+    javaHomeOption: 'JDKVersion'  # Use the specified JDK version
+    mavenVersionOption: 'Default'  # Use the default Maven version
+    mavenAuthenticateFeed: false  # Do not authenticate feed
+    effectivePomSkip: false  # Do not skip effective POM
+    sonarQubeRunAnalysis: true  # Run SonarQube analysis
+    sqMavenPluginVersionChoice: 'latest'  # Use the latest version of the SonarQube Maven plugin
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
+# Step 2: Publish test results
+- task: PublishTestResults@2
+  inputs:
+    testResultsFormat: 'JUnit'  # Format of the test results
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'  # Path to test results
+    testRunTitle: 'Tests for Petclinic'  # Title for the test run
+
+# Optional: Add additional steps for deployment or other tasks
+- script: echo "Add other tasks to build, test, and deploy your project."
   displayName: 'Run a multi-line script'
