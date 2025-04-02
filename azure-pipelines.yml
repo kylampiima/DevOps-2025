@@ -5,6 +5,9 @@ trigger:
 pool:
   vmImage: 'ubuntu-latest'
 
+variables:
+  SONAR_TOKEN: $(SONAR_TOKEN)  # Ensure this variable is set in the pipeline settings
+
 steps:
 # Step 1: Format code before building
 - task: Maven@4
@@ -13,8 +16,18 @@ steps:
     goals: 'io.spring.javaformat:spring-javaformat-maven-plugin:0.0.27:apply'
     options: '-DskipTests'  # Skip tests during formatting
 
-# Step 2: Set up Maven and run tests
-
+# Step 2: Set up Maven and run tests with SonarQube analysis
+- task: Maven@4
+  inputs:
+    mavenPomFile: 'pom.xml'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    javaHomeOption: 'JDKVersion'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    sonarQubeRunAnalysis: true
+    sqMavenPluginVersionChoice: 'latest'  # Use a specific version of the SonarQube plugin
 
 # Step 3: Publish test results
 - task: PublishTestResults@2
@@ -26,14 +39,3 @@ steps:
 # Optional: Add additional steps for deployment or other tasks
 - script: echo "Add other tasks to build, test, and deploy your project."
   displayName: 'Run a multi-line script'
-- task: Maven@4
-  inputs:
-    mavenPomFile: 'pom.xml'
-    publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    javaHomeOption: 'JDKVersion'
-    mavenVersionOption: 'Default'
-    mavenAuthenticateFeed: false
-    effectivePomSkip: false
-    sonarQubeRunAnalysis: true
-    sqMavenPluginVersionChoice: 'latest'
