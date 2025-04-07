@@ -5,37 +5,58 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: DevOp  # Reference the variable group containing SONAR_TOKEN
+  - group: DevOp  # Reference the variable group containing HEROKU_API_KEY and other variables
 
 steps:
-# Step 1: Format code before building
+# Step 1: Install Heroku CLI
+- script: |
+    echo "Installing Heroku CLI..."
+    curl https://cli-assets.heroku.com/install.sh | sh
+    heroku --version  # Verify installation
+  displayName: 'Install Heroku CLI'
+
+# Step 2: Format code before building
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
     goals: 'io.spring.javaformat:spring-javaformat-maven-plugin:0.0.27:apply'
     options: '-DskipTests'  # Skip tests during formatting
 
-# Step 2: Set up Maven and run tests with SonarQube analysis
+# Step 3: Set up Maven and run tests with SonarQube analysis
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    javaHomeOption: 'JDKVersion'
-    mavenVersionOption: 'Default'
-    mavenAuthenticateFeed: false
-    effectivePomSkip: false
     sonarQubeRunAnalysis: true
-    sqMavenPluginVersionChoice: '5.1.0.4751'  # Use a specific version of the SonarQube plugin
-    options: '-Dsonar.token=$(SONAR_TOKEN)'  # Pass the token as an option
+    options: '-Dsonar.token=$(SONAR_TOKEN)'
 
-# Step 3: Publish test results
+# Step 4: Publish test results
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    testRunTitle: 'Tests for Petclinic'
 
-# Optional: Add additional steps for deployment or other tasks
-- script: echo "Add other tasks to build, test, and deploy your project."
-  displayName: 'Run a multi-line script'
+# Step 5: Authenticate Docker with Heroku
+- script: |
+    echo "Logging in to Docker and Heroku..."
+    echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
+  displayName: 'Login to Docker and Heroku'
+
+# Step 6: Build and Push Docker Image
+- script: |
+    echo "Building Docker image..."
+    docker buildx build --provenance=false -t registry.heroku.com/devops2025/web .
+    echo "Pushing Docker image to Heroku..."
+    docker push registry.heroku.com/devops2025/web
+  displayName: 'Build and Push Docker Image'
+
+# Step 7: Release Docker Image on Heroku
+- script: |
+    echo "Releasing Docker image on Heroku..."
+    heroku container:release web --app devops2025
+  displayName: 'Release Docker Image on Heroku'
+
+# Step 8: Verify Deployment
+- script: echo "Deployment complete. Verify at https://devops2025.herokuapp.com"
+  displayName: 'Deployment Verification'
