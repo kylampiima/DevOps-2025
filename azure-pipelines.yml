@@ -54,19 +54,13 @@ steps:
     echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
   displayName: 'Login to Heroku'
 
-# Step 6: Build and Tag Docker Images with Buildx
+# Step 4: Build and Push Docker Images
 - script: |
-    echo "Building and tagging Docker images using buildx..."
-    docker buildx build --provenance=false -t kyla13/petclinic-app2:latest .
-    docker tag kyla13/petclinic-app2:latest registry.heroku.com/devops2025/web
-    echo "Docker images tagged for Docker Hub and Heroku."
-  displayName: 'Build and Tag Docker Images with Buildx'
-
-# Step 7: Push Docker Image to Heroku
-- script: |
-    echo "Pushing Docker image to Heroku..."
-    heroku container:push web --app devops2025
-  displayName: 'Push Docker Image to Heroku'
+    echo "Building and pushing Docker image to Heroku and Docker Hub..."
+    docker buildx build --provenance=false --push \
+      -t kyla13/petclinic-app2:latest \
+      -t registry.heroku.com/devops2025/web .
+  displayName: 'Build and Push Docker Images'
 
 # Step 8: Push Docker Image to Docker Hub
 - script: |
@@ -74,17 +68,12 @@ steps:
     docker push kyla13/petclinic-app2:latest
   displayName: 'Push Docker Image to Docker Hub'
 
-# Step 8: Push Docker Image to Docker Hub
-- script: |
-    echo "Pushing Docker image to Docker Hub..."
-    docker push kyla13/petclinic-app2:latest
-  displayName: 'Push Docker Image to Docker Hub'
-
-# Step 7: Release Docker Image on Heroku
+# Step 5: Release Docker Image on Heroku
 - script: |
     echo "Releasing Docker image on Heroku..."
     heroku container:release web --app devops2025
   displayName: 'Release Docker Image on Heroku'
+
 
 # Step 8: Verify Deployment
 - script: echo "Deployment complete. Verify at https://devops2025.herokuapp.com"
