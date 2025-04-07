@@ -5,7 +5,9 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: DevOp  # Reference the variable group containing SONAR_TOKEN
+  - group: DevOp  
+  - name: HEROKU_API_KEY
+    value: $(HEROKU_API_KEY)  
 
 steps:
 # Step 1: Format code before building
@@ -36,6 +38,27 @@ steps:
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     testRunTitle: 'Tests for Petclinic'
 
-# Optional: Add additional steps for deployment or other tasks
-- script: echo "Add other tasks to build, test, and deploy your project."
-  displayName: 'Run a multi-line script'
+# Step 4: Authenticate Docker with Heroku
+- script: |
+    echo "Logging in to Docker and Heroku..."
+    echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
+  displayName: 'Login to Docker and Heroku'
+
+# Step 5: Build and Push Docker Image
+- script: |
+    echo "Building Docker image..."
+    docker buildx build --provenance=false -t registry.heroku.com/devops2025/web .
+    echo "Pushing Docker image to Heroku..."
+    docker push registry.heroku.com/devops2025/web
+  displayName: 'Build and Push Docker Image'
+
+# Step 6: Release Docker Image on Heroku
+- script: |
+    echo "Releasing Docker image on Heroku..."
+    heroku container:release web --app devops2025
+  displayName: 'Release Docker Image on Heroku'
+
+# Step 7: Verify Deployment
+- script: echo "Deployment complete. Verify at https://devops2025.herokuapp.com"
+  displayName: 'Deployment Verification'
+
