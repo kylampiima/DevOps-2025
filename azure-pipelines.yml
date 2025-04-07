@@ -62,6 +62,18 @@ steps:
     echo "Docker images tagged for Docker Hub and Heroku."
   displayName: 'Build and Tag Docker Images with Buildx'
 
+# Step 7: Push Docker Image to Heroku
+- script: |
+    echo "Pushing Docker image to Heroku..."
+    heroku container:push web --app devops2025
+  displayName: 'Push Docker Image to Heroku'
+
+# Step 8: Push Docker Image to Docker Hub
+- script: |
+    echo "Pushing Docker image to Docker Hub..."
+    docker push kyla13/petclinic-app2:latest
+  displayName: 'Push Docker Image to Docker Hub'
+
 # Step 8: Push Docker Image to Docker Hub
 - script: |
     echo "Pushing Docker image to Docker Hub..."
