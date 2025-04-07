@@ -6,8 +6,6 @@ pool:
 
 variables:
   - group: DevOp  
-  - name: HEROKU_API_KEY
-    value: $(HEROKU_API_KEY)  
 
 steps:
 # Step 1: Format code before building
