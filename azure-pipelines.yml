@@ -56,6 +56,12 @@ steps:
     docker push registry.heroku.com/devops2025/web
   displayName: 'Build and Push Docker Image'
 
+# Step 8: Push Docker Image to Docker Hub
+- script: |
+    echo "Pushing Docker image to Docker Hub..."
+    docker push kyla13/petclinic-app:latest
+  displayName: 'Push Docker Image to Docker Hub'
+
 # Step 7: Release Docker Image on Heroku
 - script: |
     echo "Releasing Docker image on Heroku..."
