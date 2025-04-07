@@ -28,8 +28,13 @@ steps:
     mavenPomFile: 'pom.xml'
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    javaHomeOption: 'JDKVersion'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
     sonarQubeRunAnalysis: true
-    options: '-Dsonar.token=$(SONAR_TOKEN)'
+    sqMavenPluginVersionChoice: '5.1.0.4751'  # Use a specific version of the SonarQube plugin
+    options: '-Dsonar.token=$(SONAR_TOKEN)' 
 
 # Step 4: Publish test results
 - task: PublishTestResults@2
