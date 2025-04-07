@@ -42,11 +42,17 @@ steps:
     testResultsFormat: 'JUnit'
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
 
-# Step 5: Authenticate Docker with Heroku
+# Step 5.1: Authenticate Docker with Docker Hub
 - script: |
-    echo "Logging in to Docker and Heroku..."
+    echo "Logging in to Docker Hub..."
+    echo $(DOCKERHUB_PASSWORD) | docker login --username $(DOCKERHUB_USERNAME) --password-stdin
+  displayName: 'Login to Docker Hub'
+
+# Step 5.2: Authenticate Docker with Heroku
+- script: |
+    echo "Logging in to Heroku registry..."
     echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
-  displayName: 'Login to Docker and Heroku'
+  displayName: 'Login to Heroku'
 
 # Step 6: Build and Tag Docker Images with Buildx
 - script: |
