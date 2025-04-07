@@ -5,10 +5,18 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: DevOp  # Includes SONAR_TOKEN, HEROKU_API_KEY, DOCKERHUB_USERNAME, and DOCKERHUB_PASSWORD
+  - group: DevOp  # Reference the variable group containing DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD, RENDER_API_KEY, and RENDER_SERVICE_ID
 
 steps:
-# Step 1: Format Code Before Building
+# Install Render CLI
+- script: |
+    echo "Downloading Render CLI..."
+    curl -L https://github.com/render/render-cli/releases/latest/download/render -o /usr/local/bin/render
+    chmod +x /usr/local/bin/render
+    render --version  # Verify the installation
+  displayName: 'Install Render CLI'
+
+# Step 2: Format Code Before Building
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
@@ -16,7 +24,7 @@ steps:
     options: '-DskipTests'  # Skip tests during formatting
   displayName: 'Format Code with Maven'
 
-# Step 2: Run Tests with SonarQube Analysis
+# Step 3: Set up Maven and Run Tests with SonarQube Analysis
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
@@ -27,11 +35,11 @@ steps:
     mavenAuthenticateFeed: false
     effectivePomSkip: false
     sonarQubeRunAnalysis: true
-    sqMavenPluginVersionChoice: '5.1.0.4751'
+    sqMavenPluginVersionChoice: '5.1.0.4751'  # Use a specific version of the SonarQube plugin
     options: '-Dsonar.token=$(SONAR_TOKEN)'  # Pass the Sonar token as an option
   displayName: 'Run Maven Tests with SonarQube Analysis'
 
-# Step 3: Publish Test Results
+# Step 4: Publish Test Results
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
@@ -39,41 +47,36 @@ steps:
     testRunTitle: 'Tests for Petclinic'
   displayName: 'Publish Test Results'
 
-# Step 4: Authenticate Docker with Docker Hub
+# Step 5: Authenticate Docker with Docker Hub
 - script: |
     echo "Logging in to Docker Hub..."
     echo $(DOCKERHUB_PASSWORD) | docker login --username $(DOCKERHUB_USERNAME) --password-stdin
   displayName: 'Login to Docker Hub'
 
-# Step 5: Authenticate Docker with Heroku
-- script: |
-    echo "Logging in to Heroku registry..."
-    echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
-  displayName: 'Login to Heroku'
-
-# Step 6: Build and Push Docker Images
+# Step 6: Build and Push Docker Image
 - script: |
     echo "Building and tagging Docker image..."
-    docker buildx build --provenance=false -t registry.heroku.com/devops2025/web .
-    echo "Pushing Docker image to Heroku..."
-    docker push registry.heroku.com/devops2025/web
+    docker buildx build --provenance=false -t $(DOCKERHUB_USERNAME)/kyla13/petclinic-app2:latest .
+    
     echo "Pushing Docker image to Docker Hub..."
-    docker tag registry.heroku.com/devops2025/web kyla13/petclinic-app2:latest
-    docker push kyla13/petclinic-app2:latest
-    echo "Docker images pushed successfully."
-  displayName: 'Build and Push Docker Images to Heroku and Docker Hub'
+    docker push $(DOCKERHUB_USERNAME)/kyla13/petclinic-app2:latest
+    echo "Docker image pushed to Docker Hub successfully."
+  displayName: 'Build and Push Docker Image to Docker Hub'
 
-# Step 7: Release Docker Image on Heroku
+# Step 7: Trigger Deployment on Render with Render CLI
 - script: |
-    echo "Releasing Docker image on Heroku..."
-    heroku container:release web --app devops2025 || echo "Release step timed out or failed!"
-  displayName: 'Release Docker Image on Heroku'
+    echo "Triggering deployment on Render using Render CLI..."
+    render deploys create $(RENDER_SERVICE_ID) \
+      --image $(DOCKERHUB_USERNAME)/kyla13/petclinic-app2:latest \
+      --wait
+    echo "Deployment triggered on Render successfully!"
+  displayName: 'Trigger Deployment on Render'
 
-# Step 8: Verify Deployment and Debug
+# Step 8: Verify Deployment Status
 - script: |
-    echo "Checking Heroku release history..."
-    heroku releases --app devops2025
-    echo "Fetching Heroku logs to debug potential issues..."
-    heroku logs --tail --app devops2025
-    echo "If the app is deployed successfully, verify it at https://devops2025.herokuapp.com"
-  displayName: 'Verify Deployment and Debug Logs'
+    echo "Fetching Render deployment status..."
+    curl -X GET \
+    https://api.render.com/v1/services/$(RENDER_SERVICE_ID) \
+    -H "Authorization: Bearer $(RENDER_API_KEY)"
+    echo "Verify your app at Render's live URL or through their dashboard."
+  displayName: 'Verify Deployment on Render'
