@@ -1,24 +1,28 @@
 trigger:
-- main
+  - main
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: DevOp  # Contains DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD, FLY_API_TOKEN, FLY_APP_NAME
+  - group: DevOp  # Contains DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD, FLY_DEPLOY_TOKEN, FLY_APP_NAME, SONAR_TOKEN
 
 steps:
+
+# Step 1: Cache Fly CLI
+- task: Cache@2
+  inputs:
+    key: fly-cli-linux
+    path: $(Pipeline.Workspace)/fly-cli
+  displayName: 'Cache Fly CLI Binary'
 
 # Step 2: Install Fly CLI (Linux-friendly shell script)
 - script: |
     echo "Installing Fly CLI for Linux..."
-    
-    # Download and install Fly.io CLI using the Linux-friendly install script
     curl -L https://fly.io/install.sh | bash
 
     echo "Fly CLI installed to /home/vsts/.fly/bin/flyctl"
-    echo "Checking Fly CLI version..."
-    
+  
   displayName: 'Install Fly CLI (Linux)'
 
 # Step 3: Format Code with Maven Plugin
@@ -66,30 +70,25 @@ steps:
     docker push $IMAGE_NAME
   displayName: 'Build & Push Docker Image'
 
-# Step 8: Trigger Fly.io Deployment
+# Step 8: Trigger Fly.io Deployment using Deploy Token
 - script: |
-    echo "Triggering deployment on Fly.io..."
+    echo "Triggering deployment on Fly.io using a deploy token..."
     
-    # Use the full path to flyctl to authenticate with Fly.io
-    /home/vsts/.fly/bin/flyctl auth login --access-token $(FLY_API_TOKEN)
-
-    echo "Deploying to Fly.io..."
+    export FLY_API_TOKEN=$(FLY_DEPLOY_TOKEN)
+    IMAGE_NAME=$(DOCKERHUB_USERNAME)/petclinic-app2:latest
     
-    # Use the full path to flyctl to trigger the deployment
-    /home/vsts/.fly/bin/flyctl deploy --image $(DOCKERHUB_USERNAME)/petclinic-app2:latest --app $(FLY_APP_NAME)
+    /home/vsts/.fly/bin/flyctl deploy --image $IMAGE_NAME --app $(FLY_APP_NAME)
 
     echo "Deployment triggered successfully!"
   displayName: 'Trigger Fly.io Deployment'
 
-# Step 9: Verify Fly.io Deployment Status
+# Step 9: Verify Fly.io Deployment Status and Show App URL
 - script: |
     echo "Checking deployment status on Fly.io..."
     
-    # Use the full path to flyctl to check the deployment status
+    export FLY_API_TOKEN=$(FLY_DEPLOY_TOKEN)
     /home/vsts/.fly/bin/flyctl status --app $(FLY_APP_NAME)
-    echo "Visit your Fly.io dashboard for more details."
-    # Output deployed app URL
 
     echo "🎉 Application deployed successfully!"
-    echo "🔗 Access it here https://$(FLY_APP_NAME).fly.dev"
+    echo "🔗 Access it here: https://$(FLY_APP_NAME).fly.dev"
   displayName: 'Verify Fly.io Deployment'
