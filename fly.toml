@@ -6,7 +6,6 @@
 app = 'devops-2025'
 primary_region = 'ams'
 
-app = "petclinic"
 
 [build]
 image = "kyla13/petclinic-app2:latest"
