@@ -88,4 +88,8 @@ steps:
     # Use the full path to flyctl to check the deployment status
     /home/vsts/.fly/bin/flyctl status --app $(FLY_APP_NAME)
     echo "Visit your Fly.io dashboard for more details."
+    # Output deployed app URL
+
+    echo "🎉 Application deployed successfully!"
+    echo "🔗 Access it here https://$(FLY_APP_NAME).fly.dev"
   displayName: 'Verify Fly.io Deployment'
