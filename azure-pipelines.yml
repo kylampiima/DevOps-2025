@@ -5,18 +5,38 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: DevOp  # Includes SONAR_TOKEN, HEROKU_API_KEY, DOCKERHUB_USERNAME, and DOCKERHUB_PASSWORD
+  - group: DevOp  # Contains DOCKERHUB_USERNAME, DOCKERHUB_PASSWORD, FLY_API_TOKEN, FLY_APP_NAME
 
 steps:
-# Step 1: Format Code Before Building
+
+# Step 1: Cache Fly CLI
+- task: Cache@2
+  inputs:
+    key: fly-cli-linux
+    path: $(Pipeline.Workspace)/fly-cli
+  displayName: 'Cache Fly CLI Binary'
+
+# Step 2: Install Fly CLI (Linux-friendly shell script)
+- script: |
+    echo "Installing Fly CLI for Linux..."
+    
+    # Download and install Fly.io CLI using the Linux-friendly install script
+    curl -L https://fly.io/install.sh | bash
+
+    echo "Fly CLI installed to /home/vsts/.fly/bin/flyctl"
+    echo "Checking Fly CLI version..."
+    
+  displayName: 'Install Fly CLI (Linux)'
+
+# Step 3: Format Code with Maven Plugin
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
     goals: 'io.spring.javaformat:spring-javaformat-maven-plugin:0.0.27:apply'
-    options: '-DskipTests'  # Skip tests during formatting
+    options: '-DskipTests'
   displayName: 'Format Code with Maven'
 
-# Step 2: Run Tests with SonarQube Analysis
+# Step 4: Run Tests and SonarQube Analysis
 - task: Maven@4
   inputs:
     mavenPomFile: 'pom.xml'
@@ -24,14 +44,12 @@ steps:
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     javaHomeOption: 'JDKVersion'
     mavenVersionOption: 'Default'
-    mavenAuthenticateFeed: false
-    effectivePomSkip: false
     sonarQubeRunAnalysis: true
     sqMavenPluginVersionChoice: '5.1.0.4751'
-    options: '-Dsonar.token=$(SONAR_TOKEN)'  # Pass the Sonar token as an option
-  displayName: 'Run Maven Tests with SonarQube Analysis'
+    options: '-Dsonar.token=$(SONAR_TOKEN)'
+  displayName: 'Run Tests & SonarQube Analysis'
 
-# Step 3: Publish Test Results
+# Step 5: Publish Test Results
 - task: PublishTestResults@2
   inputs:
     testResultsFormat: 'JUnit'
@@ -39,41 +57,42 @@ steps:
     testRunTitle: 'Tests for Petclinic'
   displayName: 'Publish Test Results'
 
-# Step 4: Authenticate Docker with Docker Hub
+# Step 6: Authenticate with Docker Hub
 - script: |
     echo "Logging in to Docker Hub..."
     echo $(DOCKERHUB_PASSWORD) | docker login --username $(DOCKERHUB_USERNAME) --password-stdin
   displayName: 'Login to Docker Hub'
 
-# Step 5: Authenticate Docker with Heroku
+# Step 7: Build and Push Docker Image
 - script: |
-    echo "Logging in to Heroku registry..."
-    echo $(HEROKU_API_KEY) | docker login --username=_ --password-stdin registry.heroku.com
-  displayName: 'Login to Heroku'
+    IMAGE_NAME=$(DOCKERHUB_USERNAME)/petclinic-app2:latest
+    echo "Building Docker image: $IMAGE_NAME"
+    docker buildx build --provenance=false -t $IMAGE_NAME .
 
-# Step 6: Build and Push Docker Images
-- script: |
-    echo "Building and tagging Docker image..."
-    docker buildx build --provenance=false -t registry.heroku.com/devops2025/web .
-    echo "Pushing Docker image to Heroku..."
-    docker push registry.heroku.com/devops2025/web
     echo "Pushing Docker image to Docker Hub..."
-    docker tag registry.heroku.com/devops2025/web kyla13/petclinic-app2:latest
-    docker push kyla13/petclinic-app2:latest
-    echo "Docker images pushed successfully."
-  displayName: 'Build and Push Docker Images to Heroku and Docker Hub'
+    docker push $IMAGE_NAME
+  displayName: 'Build & Push Docker Image'
 
-# Step 7: Release Docker Image on Heroku
+# Step 8: Trigger Fly.io Deployment
 - script: |
-    echo "Releasing Docker image on Heroku..."
-    heroku container:release web --app devops2025 || echo "Release step timed out or failed!"
-  displayName: 'Release Docker Image on Heroku'
+    echo "Triggering deployment on Fly.io..."
+    
+    # Use the full path to flyctl to authenticate with Fly.io
+    /home/vsts/.fly/bin/flyctl auth login --access-token $(FLY_API_TOKEN)
 
-# Step 8: Verify Deployment and Debug
+    echo "Deploying to Fly.io..."
+    
+    # Use the full path to flyctl to trigger the deployment
+    /home/vsts/.fly/bin/flyctl deploy --image $(DOCKERHUB_USERNAME)/petclinic-app2:latest --app $(FLY_APP_NAME)
+
+    echo "Deployment triggered successfully!"
+  displayName: 'Trigger Fly.io Deployment'
+
+# Step 9: Verify Fly.io Deployment Status
 - script: |
-    echo "Checking Heroku release history..."
-    heroku releases --app devops2025
-    echo "Fetching Heroku logs to debug potential issues..."
-    heroku logs --tail --app devops2025
-    echo "If the app is deployed successfully, verify it at https://devops2025.herokuapp.com"
-  displayName: 'Verify Deployment and Debug Logs'
+    echo "Checking deployment status on Fly.io..."
+    
+    # Use the full path to flyctl to check the deployment status
+    /home/vsts/.fly/bin/flyctl status --app $(FLY_APP_NAME)
+    echo "Visit your Fly.io dashboard for more details."
+  displayName: 'Verify Fly.io Deployment'
